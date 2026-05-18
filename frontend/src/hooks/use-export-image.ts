@@ -15,100 +15,12 @@ export function useExportImage({ cardProps }: UseExportImageOptions) {
   const [isCopying, setIsCopying] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const exportToPng = useCallback(
-    async (filename?: string) => {
-      setIsExportingPng(true)
-      setError(null)
-
-      try {
-        const response = await fetch('/api/export', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...cardProps,
-            outputFormat: 'png',
-          }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || 'Export failed')
-        }
-
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-
-        const defaultFilename = `lyric-card.png`
-        downloadUrl(url, filename || defaultFilename)
-
-        URL.revokeObjectURL(url)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Erreur lors de l'export"
-        setError(message)
-        console.error(err)
-      } finally {
-        setIsExportingPng(false)
-      }
-    },
-    [cardProps],
-  )
-
-  const exportToJpg = useCallback(
-    async (filename?: string) => {
-      setIsExportingJpg(true)
-      setError(null)
-
-      try {
-        const response = await fetch('/api/export', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ...cardProps,
-            outputFormat: 'jpg',
-          }),
-        })
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}))
-          throw new Error(errorData.error || 'Export failed')
-        }
-
-        const blob = await response.blob()
-        const url = URL.createObjectURL(blob)
-
-        const defaultFilename = `lyric-card.jpg`
-        downloadUrl(url, filename || defaultFilename)
-
-        URL.revokeObjectURL(url)
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Erreur lors de l'export"
-        setError(message)
-        console.error(err)
-      } finally {
-        setIsExportingJpg(false)
-      }
-    },
-    [cardProps],
-  )
-
-  const copyToClipboard = useCallback(async () => {
-    setIsCopying(true)
-    setError(null)
-
-    try {
+  const fetchExport = useCallback(
+    async (format: ExportFormat): Promise<Blob> => {
       const response = await fetch('/api/export', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...cardProps,
-          outputFormat: 'png',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...cardProps, outputFormat: format }),
       })
 
       if (!response.ok) {
@@ -116,8 +28,49 @@ export function useExportImage({ cardProps }: UseExportImageOptions) {
         throw new Error(errorData.error || 'Export failed')
       }
 
-      const blob = await response.blob()
+      return response.blob()
+    },
+    [cardProps],
+  )
 
+  const exportTo = useCallback(
+    async (format: ExportFormat, filename?: string) => {
+      const setLoading = format === 'png' ? setIsExportingPng : setIsExportingJpg
+      setLoading(true)
+      setError(null)
+
+      try {
+        const blob = await fetchExport(format)
+        const url = URL.createObjectURL(blob)
+        downloadUrl(url, filename || `lyric-card.${format}`)
+        URL.revokeObjectURL(url)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Erreur lors de l'export"
+        setError(message)
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [fetchExport],
+  )
+
+  const exportToPng = useCallback(
+    (filename?: string) => exportTo('png', filename),
+    [exportTo],
+  )
+
+  const exportToJpg = useCallback(
+    (filename?: string) => exportTo('jpg', filename),
+    [exportTo],
+  )
+
+  const copyToClipboard = useCallback(async () => {
+    setIsCopying(true)
+    setError(null)
+
+    try {
+      const blob = await fetchExport('png')
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la copie'
@@ -126,7 +79,7 @@ export function useExportImage({ cardProps }: UseExportImageOptions) {
     } finally {
       setIsCopying(false)
     }
-  }, [cardProps])
+  }, [fetchExport])
 
   return {
     exportToPng,

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import posthog from 'posthog-js'
 import { Search, X, Loader2 } from 'lucide-react'
 import { useSearch } from '@/hooks/use-search'
@@ -13,8 +13,27 @@ export function SearchSection() {
   const [query, setQuery] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState('')
   const { selectTrack, resetAll } = useCardParams()
+  const lastTrackedQuery = useRef('')
 
   const { data, isLoading, error } = useSearch(submittedQuery)
+
+  // Track search errors and no results
+  useEffect(() => {
+    if (!isLoading && submittedQuery && submittedQuery !== lastTrackedQuery.current) {
+      if (error) {
+        posthog.capture('search_failed', {
+          query: submittedQuery,
+          error: error.message,
+        })
+        lastTrackedQuery.current = submittedQuery
+      } else if (data && data.results.length === 0) {
+        posthog.capture('search_no_results', {
+          query: submittedQuery,
+        })
+        lastTrackedQuery.current = submittedQuery
+      }
+    }
+  }, [isLoading, submittedQuery, error, data])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

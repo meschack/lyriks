@@ -83,6 +83,24 @@ export function CardControls() {
     setFormat(newFormat)
   }
 
+  const handleFontSizeChange = (newSize: number, source: 'preset' | 'slider') => {
+    if (newSize !== fontSizePx) {
+      posthog.capture('font_size_changed', { size: newSize, source })
+    }
+    setFontSizePx(newSize)
+  }
+
+  const handleInfoPositionChange = (newPosition: string) => {
+    if (newPosition !== infoPosition) {
+      posthog.capture('info_position_changed', { position: newPosition })
+    }
+    setInfoPosition(newPosition)
+  }
+
+  const handleDisplayToggle = (option: string, enabled: boolean) => {
+    posthog.capture('display_toggle_changed', { option, enabled })
+  }
+
   return (
     <div className='space-y-6'>
       {/* Theme Swatches */}
@@ -136,6 +154,7 @@ export function CardControls() {
             type='color'
             value={customColor || '#1a1a1a'}
             onChange={(e) => setCustomColor(e.target.value)}
+            onBlur={(e) => posthog.capture('custom_color_selected', { color: e.target.value })}
             className='h-10 w-full cursor-pointer rounded-lg'
           />
         )}
@@ -186,7 +205,7 @@ export function CardControls() {
               return (
                 <button
                   key={preset}
-                  onClick={() => setFontSizePx(FONT_SIZE_PRESETS[preset])}
+                  onClick={() => handleFontSizeChange(FONT_SIZE_PRESETS[preset], 'preset')}
                   className={cn(
                     'flex-1 py-2.5 text-sm font-bold transition-all',
                     isSelected
@@ -205,6 +224,7 @@ export function CardControls() {
         <Slider
           value={[fontSizePx]}
           onValueChange={([value]) => setFontSizePx(value)}
+          onValueCommit={([value]) => handleFontSizeChange(value, 'slider')}
           min={FONT_SIZE_MIN}
           max={FONT_SIZE_MAX}
           step={1}
@@ -225,7 +245,7 @@ export function CardControls() {
             return (
               <button
                 key={value}
-                onClick={() => setInfoPosition(value)}
+                onClick={() => handleInfoPositionChange(value)}
                 className={cn(
                   'flex-1 flex items-center justify-center gap-2 p-3 rounded-lg transition-all',
                   'border-2',
@@ -286,7 +306,15 @@ export function CardControls() {
               >
                 {label}
               </span>
-              <Switch id={id} checked={checked} onCheckedChange={onChange} className='scale-90' />
+              <Switch
+                id={id}
+                checked={checked}
+                onCheckedChange={(value) => {
+                  onChange(value)
+                  handleDisplayToggle(id, value)
+                }}
+                className='scale-90'
+              />
             </label>
           ))}
 
@@ -302,7 +330,10 @@ export function CardControls() {
             <Switch
               id='watermark'
               checked={showWatermark}
-              onCheckedChange={setShowWatermark}
+              onCheckedChange={(value) => {
+                setShowWatermark(value)
+                handleDisplayToggle('watermark', value)
+              }}
               className='scale-90'
             />
           </label>

@@ -1,8 +1,7 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { cn, adjustBrightness } from '@/lib/utils'
 import { CARD_FORMATS } from '@/lib/constants'
-import { adjustBrightness } from '@/hooks/use-dominant-color'
 import { getProxiedImageUrl } from '@/lib/api'
 import type { CardTheme, CardFormat } from '@/types/card'
 

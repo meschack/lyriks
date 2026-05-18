@@ -48,7 +48,10 @@ async def get_lyrics(
                 lyrics=lyrics,
                 cached=False,
             )
+            # Only cache successful responses (24 hours)
+            await cache_service.set(cache_key, response.model_dump(mode="json"), ttl=86400)
         else:
+            # Don't cache "not found" responses - lyrics might become available later
             response = LyricsResponse(
                 track_id=track_id or "",
                 track_name=track,
@@ -57,9 +60,6 @@ async def get_lyrics(
                 cached=False,
                 error="Lyrics not found",
             )
-
-        # Mettre en cache (24 heures) même si non trouvé
-        await cache_service.set(cache_key, response.model_dump(mode="json"), ttl=86400)
 
         return response
 

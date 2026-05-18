@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { LyricsWizard } from '@/components/wizard/lyrics-wizard'
 import { Footer } from '@/components/shared/footer'
+import { ErrorBoundary } from '@/components/shared/error-boundary'
 import { Skeleton } from '@/components/ui/skeleton'
 
 function WizardSkeleton() {
@@ -23,9 +24,11 @@ export default function HomePage() {
         </header>
 
         {/* Wizard */}
-        <Suspense fallback={<WizardSkeleton />}>
-          <LyricsWizard />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<WizardSkeleton />}>
+            <LyricsWizard />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       <Footer />

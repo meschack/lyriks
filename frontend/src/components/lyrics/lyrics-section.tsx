@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
+import posthog from 'posthog-js'
 import { useLyrics } from '@/hooks/use-lyrics'
 import { useCardParams } from '@/hooks/use-card-params'
 import { LyricsLine } from './lyrics-line'
@@ -11,6 +13,30 @@ import { MAX_SELECTED_LINES } from '@/lib/constants'
 export function LyricsSection() {
   const { trackId, trackName, artistName, selectedLines, setSelectedLines } = useCardParams()
   const { data, isLoading, error } = useLyrics(trackId, trackName, artistName)
+  const prevSelectionLength = useRef(0)
+
+  // Track when lyrics fetch fails
+  useEffect(() => {
+    if (!isLoading && trackId && (error || (data && !data.lyrics))) {
+      posthog.capture('lyrics_fetch_failed', {
+        track_id: trackId,
+        track_name: trackName,
+        artist_name: artistName,
+        error: data?.error || error?.message || 'Unknown error',
+      })
+    }
+  }, [isLoading, trackId, trackName, artistName, error, data])
+
+  // Track when user completes a lyrics selection (2+ lines)
+  useEffect(() => {
+    if (selectedLines.length >= 2 && prevSelectionLength.current < 2) {
+      posthog.capture('lyrics_selected', {
+        lines_count: selectedLines.length,
+        track_id: trackId,
+      })
+    }
+    prevSelectionLength.current = selectedLines.length
+  }, [selectedLines, trackId])
 
   // No track selected
   if (!trackId) {
