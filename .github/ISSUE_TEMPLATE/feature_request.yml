@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an improvement to the studio.
+title: "[Idea]: "
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What would this help you do?
+      description: Describe the task or problem behind your suggestion.
+    validations:
+      required: true
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Your suggestion
+      description: Describe the experience you would like. Sketches and examples are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or additional context
+      description: Include workarounds you have tried or other useful context.

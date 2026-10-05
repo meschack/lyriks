@@ -1,0 +1,43 @@
+name: Bug report
+description: Report something that does not work as expected.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: Check existing issues first. Do not include API tokens or private information.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Open the studio\n2. Choose a song or use your own words\n3. ..."
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and device
+      placeholder: Chrome on Windows, Safari on iPhone, etc.
+    validations:
+      required: true
+  - type: dropdown
+    id: location
+    attributes:
+      label: Where did you encounter this?
+      options:
+        - Live app
+        - Local development
+        - Both
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Screenshots or logs
+      description: Add relevant screenshots or error messages, with private data removed.

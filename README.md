@@ -1,181 +1,127 @@
+<div align="center">
+
 # Lyriks
 
-> Create and share beautiful lyrics cards — for free.
+**Turn the lyrics you love into something worth keeping.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+Create personalised lyrics cards, tune their look, and share them as high-resolution images or editable links.
 
-## Features
+[Try Lyriks](https://lyriks-pied.vercel.app) · [Report a bug](https://github.com/meschack/lyriks/issues/new?template=bug_report.yml) · [Suggest an idea](https://github.com/meschack/lyriks/issues/new?template=feature_request.yml)
 
-- **Search songs** via Genius API
-- **Fetch lyrics** from lrclib (free, no auth required)
-- **Select passages** (1-8 lines)
-- **Customize cards** with 9 themes, 4 formats, multiple font sizes
-- **Export** as PNG/JPG (via html2canvas or Satori + Sharp)
-- **Share** via URL with all settings preserved
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Built with Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs)](frontend/package.json)
+[![Contributions welcome](https://img.shields.io/badge/contributions-welcome-9ac6ab.svg)](CONTRIBUTING.md)
 
-## Demo
+</div>
 
-<!-- Add screenshot or GIF here -->
-<!-- ![Lyriks Demo](./docs/demo.gif) -->
+![The Lyriks studio](docs/images/studio.png)
 
-## Tech Stack
+## What you can make
 
-| Backend     | Frontend         |
-| ----------- | ---------------- |
-| FastAPI     | Next.js 15       |
-| Python 3.12 | React 19         |
-| Redis       | Tailwind CSS 4   |
-| httpx       | shadcn/ui        |
-| Pydantic v2 | TanStack Query   |
-|             | nuqs (URL state) |
-|             | Satori           |
+- **Song lyrics cards.** Find a song through Genius, fetch its lyrics from lrclib, and select a passage of up to eight lines.
+- **Cards with your own words.** Paste lyrics, a quote, or original text, then add a title, author and optional artwork.
+- **A look that fits the words.** Choose from nine themes, including blurred artwork and a custom colour. Adjust text size, metadata placement and visible details.
+- **The right shape.** Square (1:1), portrait (4:5), or story (9:16).
+- **Something ready to share.** Download a high-resolution PNG or JPG, or copy a link that preserves the card's content and settings.
 
-## Quick Start
+The studio shows a live preview, keeps your selection when you return to edit it, and remembers your styling preferences in your browser. It works on desktop and mobile, without an account.
 
-### Prerequisites
+<details>
+<summary>See the card editor</summary>
 
-- Python 3.12+
-- Node.js 20+
-- pnpm
-- Docker (for Redis)
-- [Genius API token](https://genius.com/api-clients)
+![Lyriks card editor with example content](docs/images/editor.png)
 
-### 1. Clone the repository
+The screenshots use sample content to illustrate the interface.
+
+</details>
+
+## Run locally
+
+### Requirements
+
+- Node.js 20 or later and pnpm
+- Python 3.12 or later
+- Redis, or Docker Compose to run the included Redis service
+- A [Genius access token](https://genius.com/api-clients) for song search
+
+You can use the **own words** mode with only the frontend running. Song search and lyrics retrieval require the backend.
+
+### 1. Clone and configure
 
 ```bash
-git clone https://github.com/your-username/lyriks.git
+git clone https://github.com/meschack/lyriks.git
 cd lyriks
-```
-
-### 2. Set up environment variables
-
-```bash
-# Backend
 cp backend/.env.example backend/.env
-# Add your GENIUS_ACCESS_TOKEN
-
-# Frontend
 cp frontend/.env.example frontend/.env
 ```
 
-### 3. Start Redis
+Set `GENIUS_ACCESS_TOKEN` in `backend/.env`. The frontend defaults to `http://localhost:8000` for the backend. The Spotify credentials in the example file are optional; current song search uses Genius.
+
+### 2. Start Redis and the backend
+
+From the repository root:
 
 ```bash
-make redis
+docker compose -f docker/docker-compose.yml up -d redis
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+python -m pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 ```
 
-### 4. Start the development servers
+On Windows, activate the environment with `venv\Scripts\activate`.
+
+### 3. Start the frontend
+
+In another terminal, from the repository root:
 
 ```bash
-# In one terminal - Backend
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
-
-# In another terminal - Frontend
 cd frontend
 pnpm install
 pnpm dev
 ```
 
-Or use the Makefile:
+Open [localhost:3000](http://localhost:3000). Backend API documentation is available at [localhost:8000/docs](http://localhost:8000/docs).
 
-```bash
-make install  # Install all dependencies
-make dev      # Start both backend and frontend
-```
+## How it works
 
-### 5. Open the app
+| Part | Tools | Responsibility |
+| --- | --- | --- |
+| Frontend | Next.js 15, React 19, TypeScript, Tailwind CSS 4, shadcn/ui | Search, selection, custom text and the card editor |
+| Client state | TanStack Query, nuqs | API caching and shareable URL state |
+| Image export | Satori, Sharp | Server-rendered PNG and JPG images |
+| Backend | FastAPI, Pydantic, httpx | Song search, lyrics retrieval and image utilities |
+| Cache | Redis | Cache search and lyrics responses |
+| Sources | Genius, lrclib | Song metadata and lyrics |
 
-Navigate to http://localhost:3000
-
-## Project Structure
-
-```
+```text
 lyriks/
-├── backend/                # FastAPI backend
-│   ├── app/
-│   │   ├── api/            # Route handlers
-│   │   ├── models/         # Pydantic models
-│   │   ├── services/       # External API clients
-│   │   └── config.py       # Settings
-│   └── tests/              # pytest tests
-├── frontend/               # Next.js frontend
-│   └── src/
-│       ├── app/            # App router pages
-│       ├── components/     # React components
-│       ├── hooks/          # Custom hooks
-│       ├── lib/            # Utilities
-│       └── types/          # TypeScript types
-├── docker/                 # Docker configs
-├── Makefile                # Dev commands
-└── CLAUDE.md               # AI assistant context
+├── frontend/       Next.js application and image export API
+├── backend/        FastAPI application and tests
+├── docker/         Docker Compose services
+├── docs/           Screenshots and design explorations
+└── Makefile        Development commands
 ```
 
-## Available Commands
+### Useful checks
 
 ```bash
-make help           # Show all available commands
-make install        # Install all dependencies
-make dev            # Start both services in development
-make dev-backend    # Start backend only (port 8000)
-make dev-frontend   # Start frontend only (port 3000)
-make redis          # Start Redis container
-make build          # Build frontend for production
-make docker-up      # Start full stack with Docker
-make docker-down    # Stop Docker containers
+# Frontend, from frontend/
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm build
 
-# Testing
-cd backend && pytest              # Run backend tests
-cd frontend && pnpm lint          # Lint frontend
-cd frontend && pnpm build         # Type check + build
+# Backend, from backend/ with the virtual environment active
+pytest
 ```
 
-## API Documentation
+## Contribute
 
-When the backend is running, API docs are available at:
+Bug reports, improvements and documentation fixes are welcome. Read the [contribution guide](CONTRIBUTING.md), browse [open issues](https://github.com/meschack/lyriks/issues), or use the issue templates above.
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
+## License and credits
 
-### External APIs Used
+Lyriks project code is distributed under the [MIT License](LICENSE). Third-party fonts, artwork and lyrics remain subject to their own licences and rights.
 
-| API                                | Purpose     | Auth Required   |
-| ---------------------------------- | ----------- | --------------- |
-| [Genius](https://docs.genius.com/) | Song search | Yes (API token) |
-| [lrclib](https://lrclib.net/docs)  | Lyrics      | No              |
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
-
-### Good First Issues
-
-Looking for a place to start? Check out issues labeled [`good first issue`](https://github.com/meschack/lyriks/labels/good%20first%20issue).
-
-## Roadmap
-
-- [ ] Spotify integration for search
-- [ ] More export formats (SVG, WebP)
-- [ ] Custom font upload
-- [ ] Lyrics timing/karaoke mode
-- [ ] Mobile app (React Native)
-- [ ] User accounts and saved cards
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
-
-## Acknowledgments
-
-- [Genius](https://genius.com/) for song data
-- [lrclib](https://lrclib.net/) for lyrics
-- [shadcn/ui](https://ui.shadcn.com/) for UI components
-- [Vercel](https://vercel.com/) for Satori
-
----
-
-Made with love by the Lyriks community.
+Thanks to [Genius](https://genius.com), [lrclib](https://lrclib.net), [shadcn/ui](https://ui.shadcn.com) and [Satori](https://github.com/vercel/satori) for the tools and data behind the studio.
