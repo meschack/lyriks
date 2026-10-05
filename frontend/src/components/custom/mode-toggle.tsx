@@ -22,14 +22,14 @@ export function ModeToggle() {
 
   return (
     <Tabs value={mode} onValueChange={handleModeChange} className='w-full'>
-      <TabsList className='w-full grid grid-cols-2'>
+      <TabsList className='mode-tabs w-full grid grid-cols-2'>
         <TabsTrigger value='search' className='gap-2'>
           <Search className='h-4 w-4' />
-          <span>Search</span>
+          <span>Find a song</span>
         </TabsTrigger>
         <TabsTrigger value='custom' className='gap-2'>
           <PenLine className='h-4 w-4' />
-          <span>Custom</span>
+          <span>Use my own words</span>
         </TabsTrigger>
       </TabsList>
     </Tabs>

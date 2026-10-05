@@ -1,13 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import posthog from 'posthog-js'
 import { useCardParams } from '@/hooks/use-card-params'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
-import { ProModal } from '@/components/shared/pro-modal'
 import { CARD_THEMES, CARD_FORMATS } from '@/lib/constants'
 import {
   Square,
@@ -40,8 +38,6 @@ const FONT_SIZE_MIN = 12
 const FONT_SIZE_MAX = 48
 
 export function CardControls() {
-  const [showProModal, setShowProModal] = useState(false)
-
   const {
     theme,
     setTheme,
@@ -102,11 +98,11 @@ export function CardControls() {
   }
 
   return (
-    <div className='space-y-6'>
+    <div className='card-controls space-y-6'>
       {/* Theme Swatches */}
       <div className='space-y-3'>
-        <Label className='text-sm font-medium'>Theme</Label>
-        <div className='grid grid-cols-5 gap-2'>
+        <Label className='text-sm font-medium'>Colour & mood</Label>
+        <div className='theme-grid'>
           {Object.entries(CARD_THEMES).map(([key, { name, preview }]) => {
             const isSelected = theme === key
             const isCustom = key === 'custom'
@@ -117,13 +113,15 @@ export function CardControls() {
                 key={key}
                 onClick={() => handleThemeChange(key as CardTheme)}
                 className={cn(
-                  'group relative aspect-square rounded-lg transition-all overflow-hidden',
+                  'theme-swatch group relative aspect-square rounded-lg transition-all overflow-hidden',
                   'ring-2 ring-offset-2 ring-offset-background',
                   isSelected
                     ? 'ring-primary scale-105'
                     : 'ring-transparent hover:ring-muted-foreground/50',
                 )}
                 title={name}
+                aria-label={`${name} theme`}
+                aria-pressed={isSelected}
               >
                 <div
                   className='absolute inset-0'
@@ -135,6 +133,7 @@ export function CardControls() {
                         : preview,
                   }}
                 />
+                <span className='theme-name'>{name}</span>
                 {isBlur && (
                   <div className='absolute inset-0 backdrop-blur-sm flex items-center justify-center'>
                     <span className='text-white text-xs font-medium drop-shadow'>Blur</span>
@@ -180,6 +179,7 @@ export function CardControls() {
                     : 'border-muted bg-muted/30 text-muted-foreground hover:border-muted-foreground/50',
                 )}
                 title={label}
+                aria-pressed={isSelected}
               >
                 <Icon className='h-5 w-5' />
                 <span className='text-xs font-medium'>{label.split(' ')[0]}</span>
@@ -229,6 +229,7 @@ export function CardControls() {
           max={FONT_SIZE_MAX}
           step={1}
           className='w-full'
+          aria-label='Text size'
         />
       </div>
 
@@ -339,9 +340,6 @@ export function CardControls() {
           </label>
         </div>
       </div>
-
-      {/* PRO Modal */}
-      <ProModal isOpen={showProModal} onClose={() => setShowProModal(false)} />
     </div>
   )
 }

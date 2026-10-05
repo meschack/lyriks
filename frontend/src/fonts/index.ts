@@ -21,4 +21,18 @@ const sfPro = localFont({
   variable: '--font-sf-pro',
 })
 
-export { sfPro }
+const satoshi = localFont({
+  src: [
+    { path: './satoshi/regular.woff2', weight: '400' },
+    { path: './satoshi/medium.woff2', weight: '500 600' },
+    { path: './satoshi/bold.woff2', weight: '700 900' },
+  ],
+  variable: '--font-satoshi',
+  display: 'swap',
+})
+const spaceMono = localFont({
+  src: './satoshi/mono.woff2',
+  variable: '--font-space-mono',
+  display: 'swap',
+})
+export { sfPro, satoshi, spaceMono }

@@ -91,7 +91,9 @@ const parseAsCustomLyrics = createParser({
   parse: (value: string) => {
     if (!value) return []
     try {
-      const decoded = JSON.parse(atob(value))
+      const decoded = JSON.parse(
+        new TextDecoder().decode(Uint8Array.from(atob(value), (char) => char.charCodeAt(0))),
+      )
       return Array.isArray(decoded.lines) ? decoded.lines : []
     } catch {
       return []
@@ -99,7 +101,11 @@ const parseAsCustomLyrics = createParser({
   },
   serialize: (value: string[]) => {
     if (!value || value.length === 0) return ''
-    return btoa(JSON.stringify({ lines: value }))
+    return btoa(
+      Array.from(new TextEncoder().encode(JSON.stringify({ lines: value })), (byte) =>
+        String.fromCharCode(byte),
+      ).join(''),
+    )
   },
 })
 
@@ -367,7 +373,7 @@ export function useCardParams() {
   const goToStep = useCallback(
     (targetStep: WizardStep) => {
       if (targetStep === 1) {
-        goToSearch()
+        setStep(1)
       } else if (targetStep === 2) {
         // In custom mode, step 2 is the card
         if (isCustomMode) {
@@ -379,7 +385,7 @@ export function useCardParams() {
         goToCard()
       }
     },
-    [goToSearch, goToLyrics, goToCard, isCustomMode],
+    [setStep, goToLyrics, goToCard, isCustomMode],
   )
 
   // Check if can proceed to card (step 3 in search mode, step 2 in custom mode)

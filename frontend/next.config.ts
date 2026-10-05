@@ -2,6 +2,7 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  outputFileTracingIncludes: { '/api/export': ['./public/fonts/sf-pro-display/*.ttf'] },
   images: {
     remotePatterns: [
       {

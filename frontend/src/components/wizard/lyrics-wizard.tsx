@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import { useCardParams, type WizardStep } from '@/hooks/use-card-params'
 import { SearchSection } from '@/components/search/search-section'
 import { LyricsSection } from '@/components/lyrics/lyrics-section'
@@ -7,145 +8,210 @@ import { CardPreviewSection } from '@/components/card-preview/card-preview-secti
 import { ModeToggle } from '@/components/custom/mode-toggle'
 import { CustomCardForm } from '@/components/custom/custom-card-form'
 import { cn } from '@/lib/utils'
-import { ChevronLeft, ChevronRight, Search, FileText, Sparkles, PenLine } from 'lucide-react'
-
-const SEARCH_STEPS = [
-  { id: 1 as WizardStep, label: 'Search', icon: Search },
-  { id: 2 as WizardStep, label: 'Lyrics', icon: FileText },
-  { id: 3 as WizardStep, label: 'Create', icon: Sparkles },
-] as const
-
-const CUSTOM_STEPS = [
-  { id: 1 as WizardStep, label: 'Custom', icon: PenLine },
-  { id: 2 as WizardStep, label: 'Create', icon: Sparkles },
-] as const
+import { ArrowLeft, ArrowRight, Check, Music2, Sparkles } from 'lucide-react'
 
 export function LyricsWizard() {
-  const { currentStep, canProceedToCard, goToStep, goToCard, isCustomMode, goToSearch } =
-    useCardParams()
-
-  // Select the appropriate steps based on mode
-  const steps = isCustomMode ? CUSTOM_STEPS : SEARCH_STEPS
-
-  const canGoBack = currentStep > 1
-
+  const {
+    currentStep,
+    canProceedToCard,
+    goToStep,
+    goToCard,
+    isCustomMode,
+    goToSearch,
+    hasTrack,
+    trackName,
+    artistName,
+  } = useCardParams()
+  const previousStep = useRef(currentStep)
+  useEffect(() => {
+    if (previousStep.current !== currentStep) {
+      document.getElementById('studio')?.scrollIntoView({ behavior: 'instant', block: 'start' })
+      document.getElementById('step-title')?.focus({ preventScroll: true })
+      previousStep.current = currentStep
+    }
+  }, [currentStep])
+  const steps = isCustomMode
+    ? ['Your words', 'Make it yours']
+    : ['Find a song', 'Pick your lines', 'Make it yours']
+  const isEditor = currentStep === (isCustomMode ? 2 : 3)
   return (
-    <div className='space-y-6'>
-      {/* Step indicator */}
-      <div className='flex items-center justify-center gap-2'>
-        {steps.map((step, index) => {
-          const Icon = step.icon
-          const isActive = currentStep === step.id
-          const isCompleted = currentStep > step.id
-          // Can click back to previous steps, OR click forward to card step if allowed
-          const canClickBack = step.id < currentStep
-          // In custom mode, step 2 is the card; in search mode, step 3 is the card
-          const cardStepId = isCustomMode ? 2 : 3
-          const canClickForward =
-            step.id === cardStepId && currentStep === (isCustomMode ? 1 : 2) && canProceedToCard
-          const isClickable = canClickBack || canClickForward
-
-          return (
-            <div key={step.id} className='flex items-center'>
-              <button
-                onClick={() => isClickable && goToStep(step.id)}
-                disabled={!isClickable}
-                className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-full transition-all',
-                  isActive && 'bg-primary text-primary-foreground',
-                  isCompleted && 'bg-primary/20 text-primary cursor-pointer hover:bg-primary/30',
-                  canClickForward &&
-                    'bg-primary/10 text-primary cursor-pointer hover:bg-primary/20 ring-2 ring-primary/50',
-                  !isActive && !isCompleted && !canClickForward && 'bg-muted text-muted-foreground',
-                )}
-              >
-                <Icon className='h-4 w-4' />
-                <span className='text-sm font-medium hidden sm:inline'>{step.label}</span>
-              </button>
-              {index < steps.length - 1 && (
-                <div className={cn('w-8 h-0.5 mx-1', isCompleted ? 'bg-primary' : 'bg-muted')} />
-              )}
+    <>
+      {currentStep === 1 && (
+        <section className='intro'>
+          <div className='intro-copy'>
+            <span className='eyebrow'>
+              <span className='status-dot' /> YOUR WORDS, ON REPEAT
+            </span>
+            <h1>
+              Some lyrics
+              <br />
+              just <span>stay with you.</span>
+            </h1>
+            <p>
+              Turn the lines you love into something you can keep.
+              <br className='hidden sm:block' /> Find a song, make it yours, share the feeling.
+            </p>
+            <div className='intro-note'>
+              <Sparkles size={14} /> Free to create. Made to share.
             </div>
-          )
-        })}
-      </div>
-
-      {/* Back button */}
-      {canGoBack && (
-        <button
-          onClick={() => goToSearch()}
-          className='flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors'
-        >
-          <ChevronLeft className='h-4 w-4' />
-          Back
-        </button>
+          </div>
+          <div className='sample-composition' aria-label='Examples of lyrics cards'>
+            <div className='sample-card sample-back'>
+              <span className='sample-meta'>
+                AFTER THE RAIN
+                <br />
+                JUNE PARK
+              </span>
+              <p>
+                A little light.
+                <br />A little longer.
+              </p>
+              <span className='sample-signature'>lyriks.</span>
+            </div>
+            <div className='sample-card sample-front'>
+              <div className='sample-track'>
+                <div className='sample-art' />
+                <span>
+                  Paper skies
+                  <br />
+                  <small>Mira Sol</small>
+                </span>
+              </div>
+              <p>
+                We kept the summer
+                <br />
+                in a paper cup.
+              </p>
+              <span className='sample-signature'>lyriks.</span>
+            </div>
+            <span className='sample-caption'>A feeling, worth keeping.</span>
+          </div>
+        </section>
       )}
-
-      {/* Step content */}
-      <div className='min-h-[500px]'>
-        {/* Step 1: Search or Custom Form */}
+      <section
+        id='studio'
+        className={cn('studio', currentStep !== 1 && 'studio-active')}
+        aria-label='Lyrics card studio'
+      >
+        <div className='studio-top'>
+          <span className='studio-title'>
+            <Music2 size={17} /> THE STUDIO
+          </span>
+          <nav className='step-nav' aria-label='Creation progress'>
+            {steps.map((label, i) => {
+              const target = (i + 1) as WizardStep
+              const enabled =
+                target <= currentStep ||
+                (target === steps.length && canProceedToCard) ||
+                (target === 2 && !isCustomMode && hasTrack)
+              return (
+                <button
+                  key={label}
+                  onClick={() => goToStep(target)}
+                  disabled={!enabled}
+                  aria-current={target === currentStep ? 'step' : undefined}
+                  className={cn(
+                    'step-item',
+                    target === currentStep && 'active',
+                    target < currentStep && 'done',
+                  )}
+                >
+                  <span className='step-number'>
+                    {target < currentStep ? <Check size={12} /> : `0${target}`}
+                  </span>
+                  <span>{label}</span>
+                </button>
+              )
+            })}
+          </nav>
+        </div>
         {currentStep === 1 && (
-          <div className='max-w-xl mx-auto space-y-6'>
-            {/* Mode toggle */}
-            <ModeToggle />
-
-            {/* Search mode */}
-            {!isCustomMode && (
-              <>
-                <div className='text-center mb-4'>
-                  <h2 className='text-2xl font-bold mb-2'>Find your song</h2>
-                  <p className='text-muted-foreground'>Search by title or artist</p>
-                </div>
-                <SearchSection />
-              </>
-            )}
-
-            {/* Custom mode */}
-            {isCustomMode && (
-              <>
-                <div className='text-center mb-4'>
-                  <h2 className='text-2xl font-bold mb-2'>Create your card</h2>
-                  <p className='text-muted-foreground'>Fill in the information below</p>
-                </div>
-                <CustomCardForm />
-              </>
-            )}
-          </div>
-        )}
-
-        {/* Step 2: Lyrics selection (search mode only) OR Card preview (custom mode) */}
-        {currentStep === 2 && !isCustomMode && (
-          <div className='max-w-xl mx-auto space-y-4'>
-            <div className='text-center mb-8'>
-              <h2 className='text-2xl font-bold mb-2'>Select your lyrics</h2>
-              <p className='text-muted-foreground'>Click to choose a passage (max 8 lines)</p>
+          <div className='start-layout'>
+            <div className='start-main'>
+              <ModeToggle />
+              <div className='section-heading'>
+                <span className='eyebrow'>LET’S START WITH THE WORDS</span>
+                <h2>{isCustomMode ? 'Your words, your way.' : 'What’s on your mind?'}</h2>
+                <p>
+                  {isCustomMode
+                    ? 'Paste your own lyrics, a quote, or a little something you wrote.'
+                    : 'Search for a song or artist. We’ll find the lyrics.'}
+                </p>
+              </div>
+              {isCustomMode ? <CustomCardForm /> : <SearchSection />}
             </div>
-            <LyricsSection />
-
-            {/* Continue button */}
-            <button
-              onClick={goToCard}
-              disabled={!canProceedToCard}
-              className={cn(
-                'w-full flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-medium transition-all',
-                canProceedToCard
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-muted text-muted-foreground cursor-not-allowed',
-              )}
-            >
-              Create my card
-              <ChevronRight className='h-4 w-4' />
-            </button>
+            <aside className='start-aside'>
+              <span className='eyebrow'>FROM SONG TO SOMETHING PERSONAL</span>
+              <div className='guide-row'>
+                <span>01</span>
+                <div>
+                  <h3>Find your song</h3>
+                  <p>Or start with your own words.</p>
+                </div>
+              </div>
+              <div className='guide-row'>
+                <span>02</span>
+                <div>
+                  <h3>Keep the good part</h3>
+                  <p>Choose up to eight lines that say it all.</p>
+                </div>
+              </div>
+              <div className='guide-row'>
+                <span>03</span>
+                <div>
+                  <h3>Give it your style</h3>
+                  <p>Pick a colour, a format, a feeling.</p>
+                </div>
+              </div>
+              <div className='aside-foot'>No account needed. Just good words.</div>
+            </aside>
           </div>
         )}
-
-        {/* Card preview (step 2 in custom mode, step 3 in search mode) */}
-        {((currentStep === 2 && isCustomMode) || currentStep === 3) && (
-          <div className='grid grid-cols-1 lg:grid-cols-2 gap-8'>
-            <CardPreviewSection />
-          </div>
+        {currentStep > 1 && (
+          <>
+            <div className='editor-heading'>
+              <div>
+                <span className='eyebrow'>
+                  {isEditor ? 'THE FINISHING TOUCHES' : 'THE PART THAT STAYS'}
+                </span>
+                <h1 id='step-title' tabIndex={-1}>
+                  {isEditor ? 'Make it yours.' : 'Pick your favourite lines.'}
+                </h1>
+                <p>
+                  {trackName} <span className='text-muted-foreground'>/ {artistName}</span>
+                </p>
+              </div>
+              <button
+                className='text-action'
+                onClick={isEditor ? () => goToStep((currentStep - 1) as WizardStep) : goToSearch}
+              >
+                <ArrowLeft size={15} />
+                {isEditor ? 'Edit your words' : 'Change song'}
+              </button>
+            </div>
+            {!isEditor ? (
+              <div className='selection-layout'>
+                <div>
+                  <LyricsSection />
+                  <div className='selection-action'>
+                    <p>Click a first line, then a last line.</p>
+                    <button
+                      className='primary-action'
+                      onClick={goToCard}
+                      disabled={!canProceedToCard}
+                    >
+                      Style my card <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </div>
+                <CardPreviewSection selectionOnly />
+              </div>
+            ) : (
+              <CardPreviewSection />
+            )}
+          </>
         )}
-      </div>
-    </div>
+      </section>
+    </>
   )
 }

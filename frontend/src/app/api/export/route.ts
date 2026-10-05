@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import satori, { SatoriOptions } from 'satori'
 import sharp from 'sharp'
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { SatoriCard, type SatoriCardProps } from '@/lib/satori-card'
 import { CARD_FORMATS, EXPORT_SCALE_FACTOR } from '@/lib/constants'
 import type { CardFormat } from '@/types/card'
@@ -11,27 +13,15 @@ let fontsCache: SatoriOptions['fonts'] | null = null
 async function loadFonts() {
   if (fontsCache) return fontsCache
 
-  try {
-    // Load Inter fonts from Google Fonts CDN
-    const [regular, bold] = await Promise.all([
-      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/fonts/sf-pro-display/regular.ttf`).then((res) =>
-        res.arrayBuffer(),
-      ),
-      fetch(`${process.env.NEXT_PUBLIC_APP_URL}/fonts/sf-pro-display/bold.ttf`).then((res) =>
-        res.arrayBuffer(),
-      ),
-    ])
-
-    fontsCache = [
-      { data: regular, name: 'SF Pro Display', weight: 400, style: 'normal' },
-      { data: bold, name: 'SF Pro Display', weight: 700, style: 'normal' },
-    ] satisfies SatoriOptions['fonts']
-
-    return fontsCache
-  } catch (error) {
-    console.error('Error loading fonts:', error)
-    return []
-  }
+  const [regular, bold] = await Promise.all([
+    readFile(path.join(process.cwd(), 'public/fonts/sf-pro-display/regular.ttf')),
+    readFile(path.join(process.cwd(), 'public/fonts/sf-pro-display/bold.ttf')),
+  ])
+  fontsCache = [
+    { data: regular, name: 'SF Pro Display', weight: 400, style: 'normal' },
+    { data: bold, name: 'SF Pro Display', weight: 700, style: 'normal' },
+  ] satisfies SatoriOptions['fonts']
+  return fontsCache
 }
 
 // Fetch image and convert to base64

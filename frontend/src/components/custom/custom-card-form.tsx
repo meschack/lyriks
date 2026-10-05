@@ -1,89 +1,110 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import posthog from 'posthog-js'
-import { Image as ImageIcon, X, ChevronRight, Plus, Trash2, Loader2, Check } from 'lucide-react'
+import { Image as ImageIcon, X, ChevronRight, Loader2, Check } from 'lucide-react'
 import { useCardParams } from '@/hooks/use-card-params'
 import { validateImageUrl } from '@/lib/api'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { MAX_CUSTOM_LINES, MAX_TITLE_LENGTH, MAX_ARTIST_LENGTH } from '@/lib/constants'
+import {
+  MAX_CUSTOM_LINES,
+  MAX_TITLE_LENGTH,
+  MAX_ARTIST_LENGTH,
+  MAX_LINE_LENGTH,
+} from '@/lib/constants'
 
 type ImageValidationState = 'idle' | 'validating' | 'valid' | 'invalid'
 
+function getArtworkValidationState(value: string): ImageValidationState {
+  if (!value.trim()) return 'idle'
+  try {
+    new URL(value.trim())
+    return 'validating'
+  } catch {
+    return 'invalid'
+  }
+}
+
 export function CustomCardForm() {
-  const { setCustomCard } = useCardParams()
+  const {
+    setCustomCard,
+    trackName,
+    artistName,
+    artworkUrl: savedArtworkUrl,
+    customLyrics,
+  } = useCardParams()
 
-  const [title, setTitle] = useState('')
-  const [artist, setArtist] = useState('')
-  const [artworkUrl, setArtworkUrl] = useState('')
-  const [lines, setLines] = useState<string[]>([''])
+  const [title, setTitle] = useState(trackName ?? '')
+  const [artist, setArtist] = useState(artistName ?? '')
+  const [artworkUrl, setArtworkUrl] = useState(savedArtworkUrl ?? '')
+  const [lyrics, setLyrics] = useState(() => customLyrics.join('\n'))
+  const [lyricsTouched, setLyricsTouched] = useState(false)
+  const [imageValidation, setImageValidation] = useState<ImageValidationState>(() =>
+    getArtworkValidationState(savedArtworkUrl ?? ''),
+  )
+  const [imageError, setImageError] = useState<string | null>(() =>
+    getArtworkValidationState(savedArtworkUrl ?? '') === 'invalid'
+      ? 'Please enter a valid URL'
+      : null,
+  )
 
-  // Image validation state
-  const [imageValidation, setImageValidation] = useState<ImageValidationState>('idle')
-  const [imageError, setImageError] = useState<string | null>(null)
-  const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Filter out empty lines for validation and submission
-  const nonEmptyLines = lines.map((line) => line.trim()).filter((line) => line.length > 0)
+  const pastedLines = lyrics.split(/\r\n|\r|\n/).map((line) => line.trim())
+  const nonEmptyLines = pastedLines.filter(Boolean)
   const lineCount = nonEmptyLines.length
+  const longLineNumbers = pastedLines.flatMap((line, index) =>
+    line.length > MAX_LINE_LENGTH ? [index + 1] : [],
+  )
+  const lyricsError =
+    lineCount > MAX_CUSTOM_LINES
+      ? `Keep your text to ${MAX_CUSTOM_LINES} nonempty lines or fewer.`
+      : longLineNumbers.length > 0
+        ? `Line${longLineNumbers.length > 1 ? 's' : ''} ${longLineNumbers.join(', ')} exceed${longLineNumbers.length === 1 ? 's' : ''} ${MAX_LINE_LENGTH} characters. Shorten ${longLineNumbers.length > 1 ? 'them' : 'it'} to continue.`
+        : lyricsTouched && lineCount === 0
+          ? 'Enter at least one line of text.'
+          : null
 
-  // Validation
   const isTitleValid = title.trim().length > 0 && title.length <= MAX_TITLE_LENGTH
   const isArtistValid = artist.trim().length > 0 && artist.length <= MAX_ARTIST_LENGTH
-  const isLyricsValid = lineCount >= 1 && lineCount <= MAX_CUSTOM_LINES
+  const isLyricsValid =
+    lineCount >= 1 && lineCount <= MAX_CUSTOM_LINES && longLineNumbers.length === 0
   const isImageValid = !artworkUrl.trim() || imageValidation === 'valid'
-
   const canSubmit = isTitleValid && isArtistValid && isLyricsValid && isImageValid
 
-  // Handle artwork URL change with debounced validation
-  const handleArtworkUrlChange = useCallback((value: string) => {
-    setArtworkUrl(value)
+  useEffect(() => {
+    const url = artworkUrl.trim()
+    if (getArtworkValidationState(url) !== 'validating') return
 
-    // Clear any pending validation
-    if (validationTimeoutRef.current) {
-      clearTimeout(validationTimeoutRef.current)
-    }
-
-    const url = value.trim()
-
-    if (!url) {
-      setImageValidation('idle')
-      setImageError(null)
-      return
-    }
-
-    // Basic URL format check
-    try {
-      new URL(url)
-    } catch {
-      setImageValidation('invalid')
-      setImageError('Please enter a valid URL')
-      return
-    }
-
-    // Start validation with debounce
-    setImageValidation('validating')
-    setImageError(null)
-
-    validationTimeoutRef.current = setTimeout(async () => {
+    let cancelled = false
+    const timeout = setTimeout(async () => {
       try {
         const result = await validateImageUrl(url)
-        if (result.valid) {
-          setImageValidation('valid')
-          setImageError(null)
-        } else {
-          setImageValidation('invalid')
-          setImageError(result.error || 'This URL does not point to a valid image')
-        }
+        if (cancelled) return
+        setImageValidation(result.valid ? 'valid' : 'invalid')
+        setImageError(
+          result.valid ? null : result.error || 'This URL does not point to a valid image',
+        )
       } catch {
+        if (cancelled) return
         setImageValidation('invalid')
         setImageError('Failed to validate image URL')
       }
     }, 500)
-  }, [])
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeout)
+    }
+  }, [artworkUrl])
+
+  const handleArtworkUrlChange = (value: string) => {
+    const state = getArtworkValidationState(value)
+    setArtworkUrl(value)
+    setImageValidation(state)
+    setImageError(state === 'invalid' ? 'Please enter a valid URL' : null)
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,75 +124,56 @@ export function CustomCardForm() {
     })
   }
 
-  // Line management
-  const addLine = () => {
-    if (lines.length < MAX_CUSTOM_LINES) {
-      setLines([...lines, ''])
-    }
-  }
-
-  const removeLine = (index: number) => {
-    if (lines.length > 1) {
-      setLines(lines.filter((_, i) => i !== index))
-    }
-  }
-
-  const updateLine = (index: number, value: string) => {
-    const newLines = [...lines]
-    newLines[index] = value
-    setLines(newLines)
-  }
-
-  const clearArtwork = () => {
-    setArtworkUrl('')
-    setImageValidation('idle')
-    setImageError(null)
-  }
+  const clearArtwork = () => handleArtworkUrlChange('')
 
   return (
     <form onSubmit={handleSubmit} className='space-y-6'>
-      {/* Title */}
-      <div className='space-y-2'>
-        <Label htmlFor='title'>Title</Label>
-        <Input
-          id='title'
-          type='text'
-          placeholder='Song or book title...'
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={MAX_TITLE_LENGTH}
-        />
-        <p className='text-xs text-muted-foreground text-right'>
-          {title.length}/{MAX_TITLE_LENGTH}
-        </p>
-      </div>
+      <div className='grid gap-4 sm:grid-cols-2'>
+        {/* Title */}
+        <div className='space-y-2'>
+          <Label htmlFor='title'>Title</Label>
+          <Input
+            id='title'
+            type='text'
+            placeholder='Song or book title...'
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={MAX_TITLE_LENGTH}
+            required
+          />
+          <p className='text-xs text-muted-foreground text-right'>
+            {title.length}/{MAX_TITLE_LENGTH}
+          </p>
+        </div>
 
-      {/* Artist */}
-      <div className='space-y-2'>
-        <Label htmlFor='artist'>Artist / Author</Label>
-        <Input
-          id='artist'
-          type='text'
-          placeholder='Artist or author name...'
-          value={artist}
-          onChange={(e) => setArtist(e.target.value)}
-          maxLength={MAX_ARTIST_LENGTH}
-        />
-        <p className='text-xs text-muted-foreground text-right'>
-          {artist.length}/{MAX_ARTIST_LENGTH}
-        </p>
+        {/* Artist */}
+        <div className='space-y-2'>
+          <Label htmlFor='artist'>Artist / Author</Label>
+          <Input
+            id='artist'
+            type='text'
+            placeholder='Artist or author name...'
+            value={artist}
+            onChange={(e) => setArtist(e.target.value)}
+            maxLength={MAX_ARTIST_LENGTH}
+            required
+          />
+          <p className='text-xs text-muted-foreground text-right'>
+            {artist.length}/{MAX_ARTIST_LENGTH}
+          </p>
+        </div>
       </div>
 
       {/* Artwork URL */}
       <div className='space-y-2'>
-        <Label>Artwork URL (optional)</Label>
+        <Label htmlFor='artwork-url'>Artwork URL (optional)</Label>
 
         {/* Preview when valid */}
         {imageValidation === 'valid' && artworkUrl.trim() && (
           <div className='relative w-24 h-24 rounded-lg overflow-hidden border'>
             <img
               src={artworkUrl.trim()}
-              alt='Preview'
+              alt='Artwork preview'
               className='w-full h-full object-cover'
               onError={() => {
                 setImageValidation('invalid')
@@ -181,101 +183,103 @@ export function CustomCardForm() {
             <button
               type='button'
               onClick={clearArtwork}
-              className='absolute top-1 right-1 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors'
+              aria-label='Clear artwork image'
+              className='absolute top-1 right-1 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
             >
-              <X className='h-3 w-3 text-white' />
+              <X className='h-3 w-3 text-white' aria-hidden='true' />
             </button>
           </div>
         )}
 
         {/* URL input */}
-        {imageValidation !== 'valid' && (
-          <div className='relative'>
-            <ImageIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
-            <Input
-              type='url'
-              placeholder='https://example.com/image.jpg'
-              value={artworkUrl}
-              onChange={(e) => handleArtworkUrlChange(e.target.value)}
-              className={cn(
-                'pl-10 pr-10',
-                imageValidation === 'invalid' && 'border-destructive focus-visible:ring-destructive',
-              )}
-            />
-            {/* Validation indicator */}
-            <div className='absolute right-3 top-1/2 -translate-y-1/2'>
-              {imageValidation === 'validating' && (
-                <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
-              )}
-              {imageValidation === 'invalid' && <X className='h-4 w-4 text-destructive' />}
-            </div>
+        <div className='relative'>
+          <ImageIcon className='absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground' />
+          <Input
+            id='artwork-url'
+            type='url'
+            aria-invalid={imageValidation === 'invalid'}
+            aria-describedby='artwork-status'
+            placeholder='https://example.com/image.jpg'
+            value={artworkUrl}
+            onChange={(e) => handleArtworkUrlChange(e.target.value)}
+            className={cn(
+              'pl-10 pr-10',
+              imageValidation === 'invalid' && 'border-destructive focus-visible:ring-destructive',
+            )}
+          />
+          {/* Validation indicator */}
+          <div className='absolute right-3 top-1/2 -translate-y-1/2'>
+            {imageValidation === 'validating' && (
+              <Loader2 className='h-4 w-4 animate-spin text-muted-foreground' />
+            )}
+            {imageValidation === 'invalid' && <X className='h-4 w-4 text-destructive' />}
           </div>
+        </div>
+
+        {imageValidation === 'validating' && (
+          <p id='artwork-status' role='status' className='text-xs text-muted-foreground'>
+            Validating image URL...
+          </p>
         )}
 
         {/* Error message */}
-        {imageError && <p className='text-xs text-destructive'>{imageError}</p>}
+        {imageError && (
+          <p id='artwork-status' role='alert' className='text-xs text-destructive'>
+            {imageError}
+          </p>
+        )}
 
         {/* Helper text */}
         {imageValidation === 'idle' && !imageError && (
-          <p className='text-xs text-muted-foreground'>
+          <p id='artwork-status' className='text-xs text-muted-foreground'>
             Paste a direct link to an image (JPG, PNG, GIF, WebP)
           </p>
         )}
 
         {/* Validation success */}
         {imageValidation === 'valid' && (
-          <p className='text-xs text-green-600 dark:text-green-400 flex items-center gap-1'>
+          <p
+            id='artwork-status'
+            role='status'
+            className='text-xs text-primary flex items-center gap-1'
+          >
             <Check className='h-3 w-3' />
             Valid image URL
           </p>
         )}
       </div>
 
-      {/* Lyrics - Line by line inputs */}
       <div className='space-y-3'>
-        <div className='flex items-center justify-between'>
-          <Label>Text / Lyrics</Label>
+        <div className='flex items-center justify-between gap-2'>
+          <Label htmlFor='custom-lyrics'>Text / Lyrics</Label>
           <span
             className={cn(
-              'text-xs',
-              lines.length >= MAX_CUSTOM_LINES ? 'text-destructive' : 'text-muted-foreground',
+              'text-xs tabular-nums',
+              lineCount > MAX_CUSTOM_LINES ? 'text-destructive' : 'text-muted-foreground',
             )}
           >
             {lineCount}/{MAX_CUSTOM_LINES} lines
           </span>
         </div>
-
-        <div className='space-y-2'>
-          {lines.map((line, index) => (
-            <div key={index} className='flex items-center gap-2'>
-              <span className='text-xs text-muted-foreground w-4 text-right'>{index + 1}</span>
-              <Input
-                type='text'
-                placeholder={`Line ${index + 1}...`}
-                value={line}
-                onChange={(e) => updateLine(index, e.target.value)}
-                className='flex-1'
-              />
-              <Button
-                type='button'
-                variant='ghost'
-                size='icon-sm'
-                onClick={() => removeLine(index)}
-                disabled={lines.length <= 1}
-                className='text-muted-foreground hover:text-destructive'
-              >
-                <Trash2 className='h-4 w-4' />
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        {/* Add line button */}
-        {lines.length < MAX_CUSTOM_LINES && (
-          <Button type='button' variant='outline' size='sm' onClick={addLine} className='w-full'>
-            <Plus className='h-4 w-4' />
-            Add a line
-          </Button>
+        <textarea
+          id='custom-lyrics'
+          rows={8}
+          placeholder='Paste your text or lyrics here...'
+          value={lyrics}
+          onChange={(e) => setLyrics(e.target.value)}
+          onBlur={() => setLyricsTouched(true)}
+          aria-invalid={Boolean(lyricsError)}
+          aria-describedby={lyricsError ? 'lyrics-help lyrics-error' : 'lyrics-help'}
+          className='block min-h-48 w-full resize-y rounded-md border border-input bg-transparent px-3 py-3 text-base leading-relaxed shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground selection:bg-primary selection:text-primary-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 md:text-sm'
+        />
+        <p id='lyrics-help' className='text-xs text-muted-foreground'>
+          Paste up to {MAX_CUSTOM_LINES} lines, with one lyric per line. Blank lines are ignored.
+          Maximum {MAX_LINE_LENGTH} characters per line.
+        </p>
+        {lyricsError && (
+          <p id='lyrics-error' role='alert' className='text-xs text-destructive'>
+            {lyricsError}
+          </p>
         )}
       </div>
 

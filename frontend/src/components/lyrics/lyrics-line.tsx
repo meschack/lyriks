@@ -14,8 +14,9 @@ export function LyricsLine({ line, isSelected, isInRange, onClick }: LyricsLineP
   return (
     <button
       onClick={onClick}
+      aria-pressed={isSelected}
       className={cn(
-        'w-full text-left px-3 py-2 rounded-md transition-colors',
+        'lyric-line w-full text-left px-3 py-3 rounded-md transition-colors',
         'hover:bg-accent/50',
         isSelected && 'bg-primary text-primary-foreground',
         isInRange && !isSelected && 'bg-primary/20',

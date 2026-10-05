@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef, useState } from 'react'
 import { cn, adjustBrightness } from '@/lib/utils'
 import { CARD_FORMATS } from '@/lib/constants'
 import { getProxiedImageUrl } from '@/lib/api'
@@ -40,6 +41,17 @@ export function CardCanvas({
 }: CardCanvasProps) {
   const dimensions = CARD_FORMATS[format]
   const aspectRatio = dimensions.width / dimensions.height
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const observer = new ResizeObserver(([entry]) => {
+      setScale(entry.contentRect.width / dimensions.width)
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [dimensions.width])
 
   // Use proxied URL for CORS
   const proxiedArtworkUrl = getProxiedImageUrl(artworkUrl)
@@ -49,93 +61,101 @@ export function CardCanvas({
 
   return (
     <div
-      className='relative overflow-hidden rounded-lg flex flex-col justify-center items-center'
-      style={{
-        aspectRatio,
-        width: '100%',
-        maxWidth: format === 'story' ? '270px' : '400px',
-        fontFamily: 'var(--font-sf-pro), system-ui, sans-serif',
-        color: '#ffffff',
-        ...backgroundStyle,
-      }}
+      ref={containerRef}
+      className='relative overflow-hidden rounded-lg'
+      style={{ aspectRatio, width: '100%', maxWidth: dimensions.width }}
     >
-      {/* Background image for blur-artwork theme */}
-      {theme === 'blur-artwork' && proxiedArtworkUrl && (
-        <div
-          className='absolute inset-0 bg-cover bg-center'
-          style={{
-            backgroundImage: `url(${proxiedArtworkUrl})`,
-            filter: 'blur(20px)',
-            transform: 'scale(1.1)',
-          }}
-        />
-      )}
-
-      {/* Overlay for contrast */}
-      <div className='absolute inset-0' style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)' }} />
-
-      {/* Content */}
       <div
-        className={cn(
-          'relative z-10 flex flex-col h-full w-full p-6',
-          infoPosition === 'top' ? 'justify-start' : 'justify-end',
-        )}
+        className='relative overflow-hidden rounded-lg flex flex-col justify-center items-center'
+        style={{
+          aspectRatio,
+          width: dimensions.width,
+          height: dimensions.height,
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+          fontFamily: 'var(--font-sf-pro), system-ui, sans-serif',
+          color: '#ffffff',
+          ...backgroundStyle,
+        }}
       >
-        {/* Info track (position top) */}
-        {infoPosition === 'top' && (showArtwork || showTitle || showArtist) && (
-          <TrackInfo
-            artworkUrl={proxiedArtworkUrl}
-            trackName={trackName}
-            artistName={artistName}
-            showArtwork={showArtwork}
-            showTitle={showTitle}
-            showArtist={showArtist}
-            className='mb-auto'
+        {/* Background image for blur-artwork theme */}
+        {theme === 'blur-artwork' && proxiedArtworkUrl && (
+          <div
+            className='absolute inset-0 bg-cover bg-center'
+            style={{
+              backgroundImage: `url(${proxiedArtworkUrl})`,
+              filter: 'blur(20px)',
+              transform: 'scale(1.1)',
+            }}
           />
         )}
 
-        {/* Lyrics */}
+        {/* Overlay for contrast */}
+        <div className='absolute inset-0' style={{ backgroundColor: 'rgba(0, 0, 0, 0.45)' }} />
+
+        {/* Content */}
         <div
-          className={cn('flex-1 flex flex-col justify-center font-bold', 'items-start text-left')}
+          className={cn(
+            'relative z-10 flex flex-col h-full w-full p-6',
+            infoPosition === 'top' ? 'justify-start' : 'justify-end',
+          )}
         >
-          {isEmpty ? (
-            <p className='text-sm' style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
-              Select lyrics to preview
-            </p>
-          ) : (
-            lyrics.map((line, i) => (
-              <p
-                key={i}
-                style={{ color: '#ffffff', fontSize: `${fontSizePx}px`, lineHeight: 1.25 }}
-              >
-                {line}
+          {/* Info track (position top) */}
+          {infoPosition === 'top' && (showArtwork || showTitle || showArtist) && (
+            <TrackInfo
+              artworkUrl={proxiedArtworkUrl}
+              trackName={trackName}
+              artistName={artistName}
+              showArtwork={showArtwork}
+              showTitle={showTitle}
+              showArtist={showArtist}
+              className='mb-auto'
+            />
+          )}
+
+          {/* Lyrics */}
+          <div
+            className={cn('flex-1 flex flex-col justify-center font-bold', 'items-start text-left')}
+          >
+            {isEmpty ? (
+              <p className='text-sm' style={{ color: 'rgba(255, 255, 255, 0.5)' }}>
+                Select lyrics to preview
               </p>
-            ))
+            ) : (
+              lyrics.map((line, i) => (
+                <p
+                  key={i}
+                  style={{ color: '#ffffff', fontSize: `${fontSizePx}px`, lineHeight: 1.25 }}
+                >
+                  {line}
+                </p>
+              ))
+            )}
+          </div>
+
+          {/* Info track (position bottom) */}
+          {infoPosition === 'bottom' && (showArtwork || showTitle || showArtist) && (
+            <TrackInfo
+              artworkUrl={proxiedArtworkUrl}
+              trackName={trackName}
+              artistName={artistName}
+              showArtwork={showArtwork}
+              showTitle={showTitle}
+              showArtist={showArtist}
+              className='mt-auto'
+            />
+          )}
+
+          {/* Watermark */}
+          {showWatermark && (
+            <div
+              className='absolute bottom-2 right-2 text-xs'
+              style={{ color: 'rgba(255, 255, 255, 0.3)' }}
+            >
+              kloo.me/lyriks
+            </div>
           )}
         </div>
-
-        {/* Info track (position bottom) */}
-        {infoPosition === 'bottom' && (showArtwork || showTitle || showArtist) && (
-          <TrackInfo
-            artworkUrl={proxiedArtworkUrl}
-            trackName={trackName}
-            artistName={artistName}
-            showArtwork={showArtwork}
-            showTitle={showTitle}
-            showArtist={showArtist}
-            className='mt-auto'
-          />
-        )}
-
-        {/* Watermark */}
-        {showWatermark && (
-          <div
-            className='absolute bottom-2 right-2 text-xs'
-            style={{ color: 'rgba(255, 255, 255, 0.3)' }}
-          >
-            kloo.me/lyriks
-          </div>
-        )}
       </div>
     </div>
   )

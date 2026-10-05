@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import posthog from 'posthog-js'
 import { useLyrics } from '@/hooks/use-lyrics'
 import { useCardParams } from '@/hooks/use-card-params'
@@ -11,8 +11,10 @@ import { AlertCircle, Music } from 'lucide-react'
 import { MAX_SELECTED_LINES } from '@/lib/constants'
 
 export function LyricsSection() {
-  const { trackId, trackName, artistName, selectedLines, setSelectedLines } = useCardParams()
+  const { trackId, trackName, artistName, selectedLines, setSelectedLines, setMode, goToStep } =
+    useCardParams()
   const { data, isLoading, error } = useLyrics(trackId, trackName, artistName)
+  const [selectionMessage, setSelectionMessage] = useState('')
   const prevSelectionLength = useRef(0)
 
   // Track when lyrics fetch fails
@@ -76,6 +78,15 @@ export function LyricsSection() {
           <p className='text-sm text-muted-foreground mt-1'>
             {data?.error || 'Try with another song'}
           </p>
+          <button
+            className='text-action mx-auto mt-4'
+            onClick={() => {
+              setMode('custom')
+              goToStep(1)
+            }}
+          >
+            Use your own words instead →
+          </button>
         </CardContent>
       </Card>
     )
@@ -100,6 +111,7 @@ export function LyricsSection() {
 
   // Selection handling (improved contiguous selection)
   const handleLineClick = (index: number) => {
+    setSelectionMessage('')
     if (selectedLines.length === 0) {
       // First selection
       setSelectedLines([index])
@@ -138,7 +150,7 @@ export function LyricsSection() {
 
     const length = newMax - newMin + 1
     if (length > MAX_SELECTED_LINES) {
-      // Don't exceed limit, keep current selection
+      setSelectionMessage(`Choose up to ${MAX_SELECTED_LINES} lines. Try a shorter passage.`)
       return
     }
 
@@ -155,10 +167,15 @@ export function LyricsSection() {
   }
 
   return (
-    <Card>
+    <Card className='lyrics-panel'>
       <CardHeader>
         <CardTitle className='text-lg flex items-center justify-between'>
-          <span>Lyrics</span>
+          <span>
+            Lyrics{' '}
+            <span className='text-muted-foreground font-normal text-sm'>
+              / {lyrics.lines.length} lines
+            </span>
+          </span>
           {selectedLines.length > 0 && (
             <span className='text-sm font-normal text-muted-foreground'>
               {selectedLines.length} line{selectedLines.length > 1 ? 's' : ''} selected
@@ -168,11 +185,28 @@ export function LyricsSection() {
       </CardHeader>
       <CardContent>
         <p className='text-xs text-muted-foreground mb-4'>
-          Click on a line to start selection, then on another to finish (max {MAX_SELECTED_LINES}{' '}
-          lines)
+          Select the first and last lines of your passage. Up to {MAX_SELECTED_LINES} lines.
         </p>
 
-        <div className='space-y-1 max-h-[400px] overflow-y-auto'>
+        <div className='flex justify-between items-center mb-3 text-xs text-muted-foreground'>
+          <span>
+            {selectedLines.length} / {MAX_SELECTED_LINES} selected
+          </span>
+          <button
+            onClick={() => {
+              setSelectedLines([])
+              setSelectionMessage('')
+            }}
+            disabled={!selectedLines.length}
+            className='text-action text-xs'
+          >
+            Clear selection
+          </button>
+        </div>
+        <p role='status' className='text-sm text-destructive mb-2'>
+          {selectionMessage}
+        </p>
+        <div className='lyrics-scroll space-y-1 max-h-[400px] overflow-y-auto'>
           {lyrics.lines.map((line) => (
             <LyricsLine
               key={line.index}

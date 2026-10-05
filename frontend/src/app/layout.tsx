@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Providers } from './providers'
 import './globals.css'
-import { sfPro } from '@/fonts'
+import { sfPro, satoshi, spaceMono } from '@/fonts'
 import { cn } from '@/lib/utils'
 import { PropsWithChildren } from 'react'
 
@@ -96,7 +96,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang='en' className={cn('dark', sfPro.variable)}>
+    <html lang='en' className={cn('dark', sfPro.variable, satoshi.variable, spaceMono.variable)}>
       <body className={cn('font-sans antialiased')}>
         <Providers>{children}</Providers>
       </body>

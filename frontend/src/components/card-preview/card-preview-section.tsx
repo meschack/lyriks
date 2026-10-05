@@ -20,7 +20,7 @@ function sanitizeForFilename(str: string): string {
     .slice(0, 50) // Limit length
 }
 
-export function CardPreviewSection() {
+export function CardPreviewSection({ selectionOnly = false }: { selectionOnly?: boolean }) {
   const {
     trackId,
     trackName,
@@ -103,7 +103,13 @@ export function CardPreviewSection() {
     ],
   )
 
-  const { exportToPng, exportToJpg, isExportingPng, isExportingJpg } = useExportImage({
+  const {
+    exportToPng,
+    exportToJpg,
+    isExportingPng,
+    isExportingJpg,
+    error: exportError,
+  } = useExportImage({
     cardProps,
   })
 
@@ -124,11 +130,15 @@ export function CardPreviewSection() {
   const canExport = hasTrack && hasSelection && selectedLyricsText.length > 0
 
   return (
-    <div className='grid grid-cols-1 lg:grid-cols-2 gap-8 lg:col-span-2'>
+    <div className={selectionOnly ? 'live-preview' : 'card-editor-layout'}>
       {/* Left: Preview */}
-      <div className='flex flex-col items-center justify-start'>
-        <div className='sticky top-8'>
-          <div className='rounded-xl border bg-card/50 p-4'>
+      <div className='preview-column'>
+        <div className='preview-sticky'>
+          <div className='preview-label'>
+            <span>LIVE PREVIEW</span>
+            <span>{format === 'story' ? '9:16' : format === 'portrait' ? '4:5' : '1:1'}</span>
+          </div>
+          <div className='preview-stage'>
             <CardCanvas
               lyrics={selectedLyricsText}
               trackName={trackName ?? ''}
@@ -148,26 +158,36 @@ export function CardPreviewSection() {
           </div>
 
           {/* Export buttons under preview */}
-          <div className='mt-4'>
-            <ExportButtons
-              onExportPng={() => exportToPng(getFilename('png'))}
-              onExportJpg={() => exportToJpg(getFilename('jpg'))}
-              shareUrl={getShareUrl()}
-              disabled={!canExport}
-              isExportingPng={isExportingPng}
-              isExportingJpg={isExportingJpg}
-            />
-          </div>
+          {!selectionOnly && (
+            <div className='export-panel'>
+              <ExportButtons
+                onExportPng={() => exportToPng(getFilename('png'))}
+                onExportJpg={() => exportToJpg(getFilename('jpg'))}
+                shareUrl={getShareUrl()}
+                error={exportError}
+                disabled={!canExport}
+                isExportingPng={isExportingPng}
+                isExportingJpg={isExportingJpg}
+              />
+            </div>
+          )}
+          {selectionOnly && (
+            <p className='preview-note'>
+              Your words are the starting point. Colours and layout come next.
+            </p>
+          )}
         </div>
       </div>
 
       {/* Right: Controls */}
-      <div className='space-y-6'>
-        <div className='rounded-xl border bg-card p-5'>
-          <h3 className='text-lg font-semibold mb-4'>Customize your card</h3>
-          <CardControls />
+      {!selectionOnly && (
+        <div className='controls-column'>
+          <div className='controls-panel'>
+            <h3 className='text-lg font-semibold mb-4'>Customize your card</h3>
+            <CardControls />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
